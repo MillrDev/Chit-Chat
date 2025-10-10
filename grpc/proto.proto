@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "/grpc;grpc";
+
+// Define the service
+service ChitChatService {
+  // Endpoint: Publish
+  rpc Publish(MessageRequest) returns (Empty);
+
+  // Endpoint: BroadCast the published message
+  rpc Subscribe(Empty) returns (stream MessageRequest);
+}
+
+// Message request that the client wants to publish
+message MessageRequest {
+  string text = 1;
+}
+
+message Empty{}
