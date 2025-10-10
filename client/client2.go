@@ -28,7 +28,7 @@ func main() {
 	client := pb.NewChitChatServiceClient(conn)
 
 	// Start listening for broadcasts in a background goroutine
-	go subscribeForMessages(client)
+	go subscribeForMessages2(client)
 
 	// Main loop: read user input and publish messages
 	reader := bufio.NewReader(os.Stdin)
@@ -49,7 +49,7 @@ func main() {
 }
 
 // Listens for broadcasted messages and prints them
-func subscribeForMessages(client pb.ChitChatServiceClient) {
+func subscribeForMessages2(client pb.ChitChatServiceClient) {
 	stream, err := client.Subscribe(context.Background(), &pb.Empty{})
 	if err != nil {
 		log.Fatalf("Failed to subscribe: %v", err)
