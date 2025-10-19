@@ -35,9 +35,17 @@ func main() {
 	fmt.Println("Connected to ChitChat — start typing messages!")
 
 	for {
-		fmt.Print("> ")
-		text, _ := reader.ReadString('\n')
-
+		var text string
+		var Continue = true
+		for Continue {
+			fmt.Print("> ")
+			text, _ = reader.ReadString('\n')
+			if len(text) > 128 {
+				fmt.Print("The message is too long, max input length is 128 characters! \nPlease input again")
+			} else {
+				Continue = false
+			}
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		_, err := client.Publish(ctx, &pb.MessageRequest{Text: text})
 		cancel()
