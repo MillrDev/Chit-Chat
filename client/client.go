@@ -12,23 +12,29 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
 )
 
 func main() {
+	timestamp := 0
+
 	// Connect to the server
 	conn, err := grpc.Dial("localhost:5050", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
+	timestamp++
 
 	client := pb.NewChitChatServiceClient(conn)
+	timestamp++
 
 	// Start listening for broadcasts in a background goroutine
 	go subscribeForMessages(client)
+	timestamp++
 
 	// Main loop: read user input and publish messages
 	reader := bufio.NewReader(os.Stdin)
@@ -45,11 +51,12 @@ func main() {
 			} else {
 				Continue = false
 			}
+			timestamp++
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		_, err := client.Publish(ctx, &pb.MessageRequest{Text: text})
 		cancel()
-
+		timestamp++
 		if err != nil {
 			log.Printf("Error publishing message: %v\n", err)
 		}
@@ -69,7 +76,11 @@ func subscribeForMessages(client pb.ChitChatServiceClient) {
 			log.Printf("Stream closed: %v", err)
 			return
 		}
-		fmt.Printf("\n📩 %s> %s", time.Now().Format("15:04:05"), msg.Text)
+		parts := strings.Split(msg.GetText(), ",")
+		message := parts[0]
+		serverTimestamp := strings.TrimSpace(parts[1])
+
+		fmt.Printf("\n" + serverTimestamp + " > " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
 	}
 }

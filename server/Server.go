@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"sync"
 
 	pb "MA3/grpc"
@@ -17,6 +18,7 @@ type chitChatServer struct {
 	mu          sync.Mutex
 	subscribers map[int]chan *pb.MessageRequest
 	nextID      int
+	timestamp   int
 }
 
 func newServer() *chitChatServer {
@@ -27,6 +29,7 @@ func newServer() *chitChatServer {
 
 // Client opens a stream to receive messages
 func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_SubscribeServer) error {
+	s.timestamp++
 	id := s.registerSubscriber()
 	defer s.unregisterSubscriber(id)
 
@@ -35,6 +38,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 
 	for msg := range ch {
 		if err := stream.Send(msg); err != nil {
+			s.timestamp++
 			fmt.Printf("Client %d disconnected: %v\n", id, err)
 			return nil
 		}
@@ -44,6 +48,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 
 // Called whenever a client publishes a message
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
+	s.timestamp++
 	fmt.Printf("Broadcasting: %s\n", msg.Text)
 
 	s.mu.Lock()
@@ -51,11 +56,13 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 
 	// Send message to all connected subscribers
 	for _, ch := range s.subscribers {
+		msg.Text = fmt.Sprintf("%s,%d\n", strings.TrimSpace(msg.Text), s.timestamp)
 		select {
 		case ch <- msg:
 		default:
 			// Drop message if subscriber channel is full
 		}
+		s.timestamp++
 	}
 
 	return &pb.Empty{}, nil
@@ -64,6 +71,7 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 // --- Helpers for managing subscribers ---
 
 func (s *chitChatServer) registerSubscriber() int {
+	s.timestamp++
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -74,6 +82,7 @@ func (s *chitChatServer) registerSubscriber() int {
 }
 
 func (s *chitChatServer) unregisterSubscriber(id int) {
+	s.timestamp++
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
