@@ -77,10 +77,11 @@ func subscribeForMessages(client pb.ChitChatServiceClient) {
 			return
 		}
 		parts := strings.Split(msg.GetText(), ",")
-		message := parts[0]
-		serverTimestamp := strings.TrimSpace(parts[1])
+		clientIndex := parts[0]
+		message := parts[1]
+		serverTimestamp := strings.TrimSpace(parts[2])
 
-		fmt.Printf("\n" + serverTimestamp + " > " + message + "\n")
+		fmt.Printf("\n [" + serverTimestamp + "] " + clientIndex + ": " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
 	}
 }

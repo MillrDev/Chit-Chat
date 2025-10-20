@@ -12,36 +12,51 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
 )
 
 func main() {
+	timestamp := 0
+
 	// Connect to the server
 	conn, err := grpc.Dial("localhost:5050", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
+	timestamp++
 
 	client := pb.NewChitChatServiceClient(conn)
+	timestamp++
 
 	// Start listening for broadcasts in a background goroutine
 	go subscribeForMessages2(client)
+	timestamp++
 
 	// Main loop: read user input and publish messages
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Connected to ChitChat — start typing messages!")
 
 	for {
-		fmt.Print("> ")
-		text, _ := reader.ReadString('\n')
-
+		var text string
+		var Continue = true
+		for Continue {
+			fmt.Print("> ")
+			text, _ = reader.ReadString('\n')
+			if len(text) > 128 {
+				fmt.Print("The message is too long, max input length is 128 characters! \nPlease input again")
+			} else {
+				Continue = false
+			}
+			timestamp++
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		_, err := client.Publish(ctx, &pb.MessageRequest{Text: text})
 		cancel()
-
+		timestamp++
 		if err != nil {
 			log.Printf("Error publishing message: %v\n", err)
 		}
@@ -61,7 +76,12 @@ func subscribeForMessages2(client pb.ChitChatServiceClient) {
 			log.Printf("Stream closed: %v", err)
 			return
 		}
-		fmt.Printf("\n📩 %s> %s", time.Now().Format("15:04:05"), msg.Text)
+		parts := strings.Split(msg.GetText(), ",")
+		clientIndex := parts[0]
+		message := parts[1]
+		serverTimestamp := strings.TrimSpace(parts[2])
+
+		fmt.Printf("\n [" + serverTimestamp + "] " + clientIndex + ": " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
 	}
 }

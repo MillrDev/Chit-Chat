@@ -36,10 +36,23 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	fmt.Printf("Client %d subscribed\n", id)
 	ch := s.subscribers[id]
 
+	text := fmt.Sprintf("Client %d has joined the chat", id)
+	_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
+
+	if err != nil {
+		log.Printf("Error publishing message: %v\n", err)
+	}
+
 	for msg := range ch {
 		if err := stream.Send(msg); err != nil {
 			s.timestamp++
 			fmt.Printf("Client %d disconnected: %v\n", id, err)
+			text := fmt.Sprintf("Client %d has left the chat", id)
+			_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
+
+			if err != nil {
+				log.Printf("Error publishing message: %v\n", err)
+			}
 			return nil
 		}
 	}
@@ -50,13 +63,14 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
 	s.timestamp++
 	fmt.Printf("Broadcasting: %s\n", msg.Text)
+	text := strings.TrimSpace(msg.Text)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// Send message to all connected subscribers
-	for _, ch := range s.subscribers {
-		msg.Text = fmt.Sprintf("%s,%d\n", strings.TrimSpace(msg.Text), s.timestamp)
+	for index, ch := range s.subscribers {
+		msg.Text = fmt.Sprintf("%d,%s,%d\n", index, text, s.timestamp)
 		select {
 		case ch <- msg:
 		default:
@@ -78,6 +92,7 @@ func (s *chitChatServer) registerSubscriber() int {
 	s.nextID++
 	id := s.nextID
 	s.subscribers[id] = make(chan *pb.MessageRequest, 10)
+
 	return id
 }
 
