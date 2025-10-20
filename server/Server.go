@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
 	"sync"
 
 	pb "MA3/grpc"
@@ -29,7 +28,6 @@ func newServer() *chitChatServer {
 
 // Client opens a stream to receive messages
 func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_SubscribeServer) error {
-	s.timestamp++
 	id := s.registerSubscriber()
 	defer s.unregisterSubscriber(id)
 
@@ -45,7 +43,6 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 
 	for msg := range ch {
 		if err := stream.Send(msg); err != nil {
-			s.timestamp++
 			fmt.Printf("Client %d disconnected: %v\n", id, err)
 			text := fmt.Sprintf("Client %d has left the chat", id)
 			_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
@@ -61,22 +58,23 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 
 // Called whenever a client publishes a message
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
-	s.timestamp++
 	fmt.Printf("Broadcasting: %s\n", msg.Text)
-	text := strings.TrimSpace(msg.Text)
+	//text := strings.TrimSpace(msg.Text)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// Send message to all connected subscribers
-	for index, ch := range s.subscribers {
-		msg.Text = fmt.Sprintf("%d,%s,%d\n", index, text, s.timestamp)
+	for _, ch := range s.subscribers {
+		s.timestamp++
+		m := *msg // copy the value
+		m.Text = fmt.Sprintf("%s,%d\n", msg.Text, s.timestamp)
+		fmt.Printf("Sending message: %s\n", msg.Text)
 		select {
-		case ch <- msg:
+		case ch <- &m:
 		default:
 			// Drop message if subscriber channel is full
 		}
-		s.timestamp++
 	}
 
 	return &pb.Empty{}, nil
