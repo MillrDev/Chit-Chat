@@ -7,6 +7,3 @@
     > go run \<client\>.go
 3. Enter the IP address you want to connect to. For same system communication, use ```localhost```.
 4. Congrats! You are now free to chat on Chit-Chat ☺
-
-## Extra:
-To connect to a server running on another host, change line 25 in the client code to the desired ip.
