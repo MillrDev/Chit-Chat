@@ -38,7 +38,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
 
 	if err != nil {
-		log.Printf("Error publishing message: %v\n", err)
+		log.Printf("[Server][Error]Error publishing message: %v\n", err)
 	}
 
 	for msg := range ch {
@@ -48,7 +48,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 			_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
 
 			if err != nil {
-				log.Printf("Error publishing message: %v\n", err)
+				log.Printf("[Server][Error]Error publishing message: %v\n", err)
 			}
 			return nil
 		}
@@ -74,7 +74,7 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 		default:
 			// Drop message if subscriber channel is full
 		}
-		log.Printf("Sent message %s to client %d", text, id)
+		log.Printf("[Server][Send] Sent message %s to client %d", text, id)
 	}
 
 	return &pb.Empty{}, nil
@@ -90,7 +90,7 @@ func (s *chitChatServer) registerSubscriber() int {
 	s.nextID++
 	id := s.nextID
 	s.subscribers[id] = make(chan *pb.MessageRequest, 10)
-	log.Printf("New client id %d joined the chat", id)
+	log.Printf("[Server][Join]New client id %d joined the chat", id)
 	return id
 }
 
@@ -102,7 +102,7 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 	if ch, ok := s.subscribers[id]; ok {
 		close(ch)
 		delete(s.subscribers, id)
-		log.Printf("client id %d left the chat", id)
+		log.Printf("[Server][Leave] Client id %d left the chat", id)
 	}
 }
 
@@ -111,15 +111,16 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 func main() {
 	lis, err := net.Listen("tcp", ":5050")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("[Server][Fail] Failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterChitChatServiceServer(grpcServer, newServer())
 
 	fmt.Println("💬 ChitChat Server running on port 5050...")
-	log.Printf("Server listening at %v", lis.Addr())
+	log.Printf("[Server][Listening] Server listening at %v", lis.Addr())
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		log.Fatalf("[Server][Fail]Failed to serve: %v", err)
 	}
+	log.Printf("[Server][Shutdown] Server shutting down")
 }

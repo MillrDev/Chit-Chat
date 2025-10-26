@@ -23,9 +23,9 @@ func main() {
 
 	// Connect to the server
 	conn, err := grpc.Dial("localhost:5050", grpc.WithInsecure())
-	log.Printf("Connected to server")
+	log.Printf("[Client][Connect] Connected to server")
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Fatalf("[Client][Error] did not connect: %v", err)
 	}
 	defer conn.Close()
 	timestamp++
@@ -59,9 +59,9 @@ func main() {
 		cancel()
 		timestamp++
 		if err != nil {
-			log.Printf("Error publishing message: %v\n", err)
+			log.Printf("[Client][Error]Error publishing message: %v\n", err)
 		}
-		log.Printf("Published message: %s at local timestamp: %d", strings.TrimSpace(text), timestamp)
+		log.Printf("[Client][Publish] Published message: %s at local timestamp: %d", strings.TrimSpace(text), timestamp)
 	}
 }
 
@@ -69,13 +69,13 @@ func main() {
 func subscribeForMessages(client pb.ChitChatServiceClient) {
 	stream, err := client.Subscribe(context.Background(), &pb.Empty{})
 	if err != nil {
-		log.Fatalf("Failed to subscribe: %v", err)
+		log.Fatalf("[Client][Fail] Failed to subscribe: %v", err)
 	}
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			log.Printf("Stream closed: %v", err)
+			log.Printf("[Client][Close] Stream closed: %v", err)
 			return
 		}
 		parts := strings.Split(msg.GetText(), ",")
@@ -84,6 +84,6 @@ func subscribeForMessages(client pb.ChitChatServiceClient) {
 
 		fmt.Printf("\n [" + serverTimestamp + "] " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
-		log.Println("Recieved message: " + message + " at server timestamp: " + serverTimestamp)
+		log.Println("[Client][Receive] Recieved message: " + message + " at server timestamp: " + serverTimestamp)
 	}
 }
