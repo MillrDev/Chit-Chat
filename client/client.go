@@ -21,8 +21,12 @@ import (
 func main() {
 	timestamp := 0
 
+	fmt.Println("Enter address you want to connect to: ")
+	var address string
+	fmt.Scanln(&address)
+
 	// Connect to the server
-	conn, err := grpc.Dial("localhost:5050", grpc.WithInsecure())
+	conn, err := grpc.Dial(address+":5050", grpc.WithInsecure())
 	log.Printf("[Client][Connect] Connected to server")
 	if err != nil {
 		log.Fatalf("[Client][Error] did not connect: %v", err)
