@@ -1,13 +1,13 @@
 package main
 
 import (
+	pb "MA3/grpc"
 	"context"
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"sync"
-
-	pb "MA3/grpc"
 
 	"google.golang.org/grpc"
 )
@@ -59,22 +59,22 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 // Called whenever a client publishes a message
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
 	fmt.Printf("Broadcasting: %s\n", msg.Text)
-	//text := strings.TrimSpace(msg.Text)
+	text := strings.TrimSpace(msg.Text)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// Send message to all connected subscribers
-	for _, ch := range s.subscribers {
+	for id, ch := range s.subscribers {
 		s.timestamp++
 		m := *msg // copy the value
-		m.Text = fmt.Sprintf("%s,%d\n", msg.Text, s.timestamp)
-		fmt.Printf("Sending message: %s\n", msg.Text)
+		m.Text = fmt.Sprintf("%s,%d", text, s.timestamp)
 		select {
 		case ch <- &m:
 		default:
 			// Drop message if subscriber channel is full
 		}
+		log.Printf("Sent message %s to client %d", text, id)
 	}
 
 	return &pb.Empty{}, nil
@@ -90,7 +90,7 @@ func (s *chitChatServer) registerSubscriber() int {
 	s.nextID++
 	id := s.nextID
 	s.subscribers[id] = make(chan *pb.MessageRequest, 10)
-
+	log.Printf("New client id %d joined the chat", id)
 	return id
 }
 
@@ -102,6 +102,7 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 	if ch, ok := s.subscribers[id]; ok {
 		close(ch)
 		delete(s.subscribers, id)
+		log.Printf("client id %d left the chat", id)
 	}
 }
 
@@ -117,6 +118,7 @@ func main() {
 	pb.RegisterChitChatServiceServer(grpcServer, newServer())
 
 	fmt.Println("💬 ChitChat Server running on port 5050...")
+	log.Printf("Server listening at %v", lis.Addr())
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}

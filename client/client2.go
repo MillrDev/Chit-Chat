@@ -23,6 +23,7 @@ func main() {
 
 	// Connect to the server
 	conn, err := grpc.Dial("localhost:5050", grpc.WithInsecure())
+	log.Printf("Connected to server")
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -60,6 +61,7 @@ func main() {
 		if err != nil {
 			log.Printf("Error publishing message: %v\n", err)
 		}
+		log.Printf("Published message: %s at local timestamp: %d", strings.TrimSpace(text), timestamp)
 	}
 }
 
@@ -82,5 +84,6 @@ func subscribeForMessages2(client pb.ChitChatServiceClient) {
 
 		fmt.Printf("\n [" + serverTimestamp + "] " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
+		log.Println("Recieved message: " + message + " at server timestamp: " + serverTimestamp)
 	}
 }
