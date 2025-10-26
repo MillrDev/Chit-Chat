@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -35,6 +36,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	ch := s.subscribers[id]
 
 	text := fmt.Sprintf("Client %d has joined the chat", id)
+	s.timestamp++
 	_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
 
 	if err != nil {
@@ -58,15 +60,22 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 
 // Called whenever a client publishes a message
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
-	fmt.Printf("Broadcasting: %s\n", msg.Text)
-	text := strings.TrimSpace(msg.Text)
+	parts := strings.SplitN(msg.Text, ",", 2)
+	text := strings.TrimSpace(parts[0])
+	clientTime := 0
+	if len(parts) == 2 {
+		if t, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+			clientTime = t
+		}
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.timestamp = max(s.timestamp, clientTime) + 1
+	fmt.Printf("Broadcasting: %s\n", text)
 
 	// Send message to all connected subscribers
 	for id, ch := range s.subscribers {
-		s.timestamp++
 		m := *msg // copy the value
 		m.Text = fmt.Sprintf("%s,%d", text, s.timestamp)
 		select {
@@ -74,7 +83,7 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 		default:
 			// Drop message if subscriber channel is full
 		}
-		log.Printf("[Server][Send] Sent message %s to client %d", text, id)
+		log.Printf("[Server][Send] Event=Broadcast | To=ClientID=%d | Message=\"%s\" | Lamport=%d", id, text, s.timestamp)
 	}
 
 	return &pb.Empty{}, nil
@@ -90,7 +99,7 @@ func (s *chitChatServer) registerSubscriber() int {
 	s.nextID++
 	id := s.nextID
 	s.subscribers[id] = make(chan *pb.MessageRequest, 10)
-	log.Printf("[Server][Join]New client id %d joined the chat", id)
+	log.Printf("[Server][Join] ClientID=%d | Event=ClientJoined | Message=\"Client %d joined the chat\"", id, id)
 	return id
 }
 
@@ -109,7 +118,7 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 // --- Main ---
 
 func main() {
-	lis, err := net.Listen("tcp", ":5050")
+	lis, err := net.Listen("tcp", ":5060")
 	if err != nil {
 		log.Fatalf("[Server][Fail] Failed to listen: %v", err)
 	}
@@ -117,7 +126,7 @@ func main() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterChitChatServiceServer(grpcServer, newServer())
 
-	fmt.Println("💬 ChitChat Server running on port 5050...")
+	fmt.Println("ChitChat Server running on port 5060...")
 	log.Printf("[Server][Listening] Server listening at %v", lis.Addr())
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("[Server][Fail]Failed to serve: %v", err)

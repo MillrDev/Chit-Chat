@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,16 +21,16 @@ import (
 
 func main() {
 	timestamp := 0
-	
+
 	fmt.Println("Enter address you want to connect to: ")
 	var address string
 	fmt.Scanln(&address)
 
 	// Connect to the server
-	conn, err := grpc.Dial(address+":5050", grpc.WithInsecure())
-	log.Printf("Connected to server")
+	conn, err := grpc.Dial(address+":5060", grpc.WithInsecure())
+	log.Printf("[Client][Connect] Connected to server")
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Fatalf("[Client][Error] did not connect: %v", err)
 	}
 	defer conn.Close()
 	timestamp++
@@ -38,7 +39,7 @@ func main() {
 	timestamp++
 
 	// Start listening for broadcasts in a background goroutine
-	go subscribeForMessages2(client)
+	go subscribeForMessages2(client, &timestamp)
 	timestamp++
 
 	// Main loop: read user input and publish messages
@@ -63,31 +64,34 @@ func main() {
 		cancel()
 		timestamp++
 		if err != nil {
-			log.Printf("Error publishing message: %v\n", err)
+			log.Printf("[Client][Error]Error publishing message: %v\n", err)
 		}
-		log.Printf("Published message: %s at local timestamp: %d", strings.TrimSpace(text), timestamp)
+		log.Printf("[Client][Publish] Published message: %s at local timestamp: %d", strings.TrimSpace(text), timestamp)
 	}
 }
 
 // Listens for broadcasted messages and prints them
-func subscribeForMessages2(client pb.ChitChatServiceClient) {
+func subscribeForMessages2(client pb.ChitChatServiceClient, timestamp *int) {
 	stream, err := client.Subscribe(context.Background(), &pb.Empty{})
 	if err != nil {
-		log.Fatalf("Failed to subscribe: %v", err)
+		log.Fatalf("[Client][Fail] Failed to subscribe: %v", err)
 	}
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			log.Printf("Stream closed: %v", err)
+			log.Printf("[Client][Close] Stream closed: %v", err)
 			return
 		}
 		parts := strings.Split(msg.GetText(), ",")
 		message := parts[0]
 		serverTimestamp := strings.TrimSpace(parts[1])
 
+		serverTime, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
+		*timestamp = max(*timestamp, serverTime) + 1
+
 		fmt.Printf("\n [" + serverTimestamp + "] " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
-		log.Println("Recieved message: " + message + " at server timestamp: " + serverTimestamp)
+		log.Println("[Client][Receive] Recieved message: " + message + " at server timestamp: " + serverTimestamp)
 	}
 }

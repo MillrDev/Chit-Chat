@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,7 +27,7 @@ func main() {
 	fmt.Scanln(&address)
 
 	// Connect to the server
-	conn, err := grpc.Dial(address+":5050", grpc.WithInsecure())
+	conn, err := grpc.Dial(address+":5060", grpc.WithInsecure())
 	log.Printf("[Client][Connect] Connected to server")
 	if err != nil {
 		log.Fatalf("[Client][Error] did not connect: %v", err)
@@ -38,7 +39,7 @@ func main() {
 	timestamp++
 
 	// Start listening for broadcasts in a background goroutine
-	go subscribeForMessages(client)
+	go subscribeForMessages(client, &timestamp)
 	timestamp++
 
 	// Main loop: read user input and publish messages
@@ -70,7 +71,7 @@ func main() {
 }
 
 // Listens for broadcasted messages and prints them
-func subscribeForMessages(client pb.ChitChatServiceClient) {
+func subscribeForMessages(client pb.ChitChatServiceClient, timestamp *int) {
 	stream, err := client.Subscribe(context.Background(), &pb.Empty{})
 	if err != nil {
 		log.Fatalf("[Client][Fail] Failed to subscribe: %v", err)
@@ -85,6 +86,9 @@ func subscribeForMessages(client pb.ChitChatServiceClient) {
 		parts := strings.Split(msg.GetText(), ",")
 		message := parts[0]
 		serverTimestamp := strings.TrimSpace(parts[1])
+
+		serverTime, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
+		*timestamp = max(*timestamp, serverTime) + 1
 
 		fmt.Printf("\n [" + serverTimestamp + "] " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
