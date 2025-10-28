@@ -33,10 +33,8 @@ func main() {
 		log.Fatalf("[Client][Error] did not connect: %v", err)
 	}
 	defer conn.Close()
-	timestamp++
 
 	client := pb.NewChitChatServiceClient(conn)
-	timestamp++
 
 	// Start listening for broadcasts in a background goroutine
 	go subscribeForMessages2(client, &timestamp)
@@ -58,6 +56,7 @@ func main() {
 				Continue = false
 			}
 		}
+		timestamp++
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		textTimestamp := fmt.Sprintf("%s,%d", text, timestamp)
 		_, err := client.Publish(ctx, &pb.MessageRequest{Text: textTimestamp})
@@ -65,8 +64,7 @@ func main() {
 		if err != nil {
 			log.Printf("[Client][Error]Error publishing message: %v\n", err)
 		}
-		log.Printf("[Client][Publish] Published message: %s at local timestamp: %d", strings.TrimSpace(text), timestamp)
-		timestamp++
+		log.Printf("[Client][Publish] Published message: %s at timestamp: %d", strings.TrimSpace(text), timestamp)
 	}
 }
 
@@ -85,13 +83,12 @@ func subscribeForMessages2(client pb.ChitChatServiceClient, timestamp *int) {
 		}
 		parts := strings.Split(msg.GetText(), ",")
 		message := parts[0]
-		serverTimestamp := strings.TrimSpace(parts[1])
 
 		serverTime, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
 		*timestamp = max(*timestamp, serverTime) + 1
 
-		fmt.Printf("\n [" + serverTimestamp + "] " + message + "\n")
+		fmt.Printf("\n [" + strconv.Itoa(*timestamp) + "] " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
-		log.Println("[Client][Receive] Received message: " + message + " at server timestamp: " + serverTimestamp)
+		log.Println("[Client][Receive] Received message: " + message + " at timestamp: " + strconv.Itoa(*timestamp))
 	}
 }

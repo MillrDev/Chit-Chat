@@ -24,11 +24,13 @@ type chitChatServer struct {
 func newServer() *chitChatServer {
 	return &chitChatServer{
 		subscribers: make(map[int]chan *pb.MessageRequest),
+		timestamp:   1,
 	}
 }
 
 // Client opens a stream to receive messages
 func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_SubscribeServer) error {
+	s.timestamp++
 	id := s.registerSubscriber()
 	defer s.unregisterSubscriber(id)
 
@@ -36,7 +38,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	ch := s.subscribers[id]
 
 	text := fmt.Sprintf("Client %d has joined the chat", id)
-	s.timestamp++
+
 	_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
 
 	if err != nil {
@@ -70,16 +72,21 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 
 // Called whenever a client publishes a message
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
-	parts := strings.SplitN(msg.Text, ",", 2)
-	text := strings.TrimSpace(parts[0])
-	clientTime, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.timestamp = max(s.timestamp, clientTime) + 1
+
+	parts := strings.SplitN(msg.Text, ",", 2)
+	text := strings.TrimSpace(parts[0])
+	clientTime := 0
+	if len(parts) > 1 {
+		clientTime, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
+		s.timestamp = max(s.timestamp, clientTime) + 1 //increases timestamp for the receival of a message
+	}
+
 	fmt.Printf("Broadcasting: %s\n", text)
 
 	// Send message to all connected subscribers
+	s.timestamp++ //increase timestamp for the sending of a message
 	for id, ch := range s.subscribers {
 		m := *msg // copy the value
 		m.Text = fmt.Sprintf("%s,%d", text, s.timestamp)
@@ -97,19 +104,17 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 // --- Helpers for managing subscribers ---
 
 func (s *chitChatServer) registerSubscriber() int {
-	s.timestamp++
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.nextID++
 	id := s.nextID
 	s.subscribers[id] = make(chan *pb.MessageRequest, 10)
-	log.Printf("[Server][Join] ClientID=%d | Event=ClientJoined | Message=\"Client %d joined the chat\"", id, id)
+	log.Printf("[Server][Join] ClientID=%d | Event=ClientJoined | Message=\"Client %d joined the chat\" | Lamport=%d ", id, id, s.timestamp)
 	return id
 }
 
 func (s *chitChatServer) unregisterSubscriber(id int) {
-	s.timestamp++
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
