@@ -28,7 +28,6 @@ func newServer() *chitChatServer {
 	}
 }
 
-// Client opens a stream to receive messages
 func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_SubscribeServer) error {
 	id := s.registerSubscriber()
 	defer s.unregisterSubscriber(id)
@@ -45,11 +44,10 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	}
 
 	go func() {
-		<-stream.Context().Done() // blocks until client disconnects
+		<-stream.Context().Done()
 		fmt.Printf("Client %d disconnected\n", id)
 		s.unregisterSubscriber(id)
 
-		// Broadcast that the client left
 		leaveMsg := fmt.Sprintf("Client %d has left the chat", id)
 		_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: leaveMsg})
 		if err != nil {
@@ -57,10 +55,8 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 		}
 	}()
 
-	// Send messages to this client
 	for msg := range ch {
 		if err := stream.Send(msg); err != nil {
-			// This still handles edge cases like broken streams
 			fmt.Printf("Error sending to client %d: %v\n", id, err)
 			return nil
 		}
@@ -68,7 +64,6 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	return nil
 }
 
-// Called whenever a client publishes a message
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -83,23 +78,19 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 
 	fmt.Printf("Broadcasting: %s\n", text)
 
-	// Send message to all connected subscribers
 	s.timestamp++ //increase timestamp for the sending of a message
 	for id, ch := range s.subscribers {
-		m := *msg // copy the value
+		m := *msg
 		m.Text = fmt.Sprintf("%s,%d", text, s.timestamp)
 		select {
 		case ch <- &m:
 		default:
-			// Drop message if subscriber channel is full
 		}
 		log.Printf("[Server][Send] Event=Broadcast | To=ClientID=%d | Message=\"%s\" | Lamport=%d", id, text, s.timestamp)
 	}
 
 	return &pb.Empty{}, nil
 }
-
-// --- Helpers for managing subscribers ---
 
 func (s *chitChatServer) registerSubscriber() int {
 	s.mu.Lock()
@@ -124,8 +115,6 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 		log.Printf("[Server][Leave] Client id %d left the chat", id)
 	}
 }
-
-// --- Main ---
 
 func main() {
 	lis, err := net.Listen("tcp", ":5060")

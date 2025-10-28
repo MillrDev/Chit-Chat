@@ -26,7 +26,6 @@ func main() {
 	var address string
 	fmt.Scanln(&address)
 
-	// Connect to the server
 	conn, err := grpc.Dial(address+":5060", grpc.WithInsecure())
 	log.Printf("[Client][Connect] Connected to server")
 	if err != nil {
@@ -36,11 +35,9 @@ func main() {
 
 	client := pb.NewChitChatServiceClient(conn)
 
-	// Start listening for broadcasts in a background goroutine
 	go subscribeForMessages(client, &timestamp)
 	timestamp++
 
-	// Main loop: read user input and publish messages
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Connected to ChitChat — start typing messages!")
 
@@ -88,7 +85,7 @@ func subscribeForMessages(client pb.ChitChatServiceClient, timestamp *int) {
 		*timestamp = max(*timestamp, serverTime) + 1
 
 		fmt.Printf("\n [" + strconv.Itoa(*timestamp) + "] " + message + "\n")
-		fmt.Print("> ") // Reprint prompt after message
+		fmt.Print("> ")
 		log.Println("[Client][Receive] Received message: " + message + " at timestamp: " + strconv.Itoa(*timestamp))
 	}
 }
