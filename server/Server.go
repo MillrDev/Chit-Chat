@@ -52,7 +52,6 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 
 		// Broadcast that the client left
 		leaveMsg := fmt.Sprintf("Client %d has left the chat", id)
-		s.timestamp++
 		_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: leaveMsg})
 		if err != nil {
 			log.Printf("[Server][Error] Error publishing leave message: %v\n", err)
@@ -117,6 +116,7 @@ func (s *chitChatServer) registerSubscriber() int {
 func (s *chitChatServer) unregisterSubscriber(id int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.timestamp++
 
 	if ch, ok := s.subscribers[id]; ok {
 		close(ch)
