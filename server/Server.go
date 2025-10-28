@@ -30,7 +30,6 @@ func newServer() *chitChatServer {
 
 // Client opens a stream to receive messages
 func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_SubscribeServer) error {
-	s.timestamp++
 	id := s.registerSubscriber()
 	defer s.unregisterSubscriber(id)
 
@@ -106,6 +105,7 @@ func (s *chitChatServer) registerSubscriber() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.timestamp++
 	s.nextID++
 	id := s.nextID
 	s.subscribers[id] = make(chan *pb.MessageRequest, 10)
