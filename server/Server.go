@@ -40,18 +40,28 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
 
 	if err != nil {
-		log.Printf("[Server][Error]Error publishing message: %v\n", err)
+		log.Printf("[Server][Error]Error publishing client joined the chat: %v\n", err)
 	}
 
+	go func() {
+		<-stream.Context().Done() // blocks until client disconnects
+		fmt.Printf("Client %d disconnected\n", id)
+		s.unregisterSubscriber(id)
+
+		// Broadcast that the client left
+		leaveMsg := fmt.Sprintf("Client %d has left the chat", id)
+		s.timestamp++
+		_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: leaveMsg})
+		if err != nil {
+			log.Printf("[Server][Error] Error publishing leave message: %v\n", err)
+		}
+	}()
+
+	// Send messages to this client
 	for msg := range ch {
 		if err := stream.Send(msg); err != nil {
-			fmt.Printf("Client %d disconnected: %v\n", id, err)
-			text := fmt.Sprintf("Client %d has left the chat", id)
-			_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
-
-			if err != nil {
-				log.Printf("[Server][Error]Error publishing message: %v\n", err)
-			}
+			// This still handles edge cases like broken streams
+			fmt.Printf("Error sending to client %d: %v\n", id, err)
 			return nil
 		}
 	}
@@ -62,12 +72,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*pb.Empty, error) {
 	parts := strings.SplitN(msg.Text, ",", 2)
 	text := strings.TrimSpace(parts[0])
-	clientTime := 0
-	if len(parts) == 2 {
-		if t, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
-			clientTime = t
-		}
-	}
+	clientTime, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

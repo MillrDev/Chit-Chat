@@ -57,16 +57,16 @@ func main() {
 			} else {
 				Continue = false
 			}
-			timestamp++
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		_, err := client.Publish(ctx, &pb.MessageRequest{Text: text})
+		textTimestamp := fmt.Sprintf("%s,%d", text, timestamp)
+		_, err := client.Publish(ctx, &pb.MessageRequest{Text: textTimestamp})
 		cancel()
-		timestamp++
 		if err != nil {
 			log.Printf("[Client][Error]Error publishing message: %v\n", err)
 		}
 		log.Printf("[Client][Publish] Published message: %s at local timestamp: %d", strings.TrimSpace(text), timestamp)
+		timestamp++
 	}
 }
 
@@ -92,6 +92,6 @@ func subscribeForMessages2(client pb.ChitChatServiceClient, timestamp *int) {
 
 		fmt.Printf("\n [" + serverTimestamp + "] " + message + "\n")
 		fmt.Print("> ") // Reprint prompt after message
-		log.Println("[Client][Receive] Recieved message: " + message + " at server timestamp: " + serverTimestamp)
+		log.Println("[Client][Receive] Received message: " + message + " at server timestamp: " + serverTimestamp)
 	}
 }
