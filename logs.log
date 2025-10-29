@@ -1,0 +1,17 @@
+2025/10/29 16:49:17 [Server][Listening] Server listening at [::]:5060
+2025/10/29 16:49:32 [Client][Connect] Connected to server
+2025/10/29 16:49:32 [Server][Join] ClientID=1 | Event=ClientJoined | Message="Client 1 joined the chat" | Lamport=2 
+2025/10/29 16:49:32 [Server][Send] Event=Broadcast | To=ClientID=1 | Message="Client 1 has joined the chat" | Lamport=3
+2025/10/29 16:49:32 [Client][Receive] Received message: Client 1 has joined the chat at timestamp: 4
+2025/10/29 16:49:43 [Server][Send] Event=Broadcast | To=ClientID=1 | Message="hello" | Lamport=7
+2025/10/29 16:49:43 [Client][Receive] Received message: hello at timestamp: 8
+2025/10/29 16:49:43 [Client][Publish] Published message: hello at timestamp: 8
+2025/10/29 16:49:53 [Client][Connect] Connected to server
+2025/10/29 16:49:53 [Server][Join] ClientID=2 | Event=ClientJoined | Message="Client 2 joined the chat" | Lamport=8 
+2025/10/29 16:49:53 [Server][Send] Event=Broadcast | To=ClientID=1 | Message="Client 2 has joined the chat" | Lamport=9
+2025/10/29 16:49:53 [Server][Send] Event=Broadcast | To=ClientID=2 | Message="Client 2 has joined the chat" | Lamport=9
+2025/10/29 16:49:53 [Client][Receive] Received message: Client 2 has joined the chat at timestamp: 10
+2025/10/29 16:49:53 [Client][Receive] Received message: Client 2 has joined the chat at timestamp: 10
+2025/10/29 16:50:06 [Server][Leave] Client id 1 left the chat | Lamport=10
+2025/10/29 16:50:06 [Server][Send] Event=Broadcast | To=ClientID=2 | Message="Client 1 has left the chat" | Lamport=11
+2025/10/29 16:50:06 [Client][Receive] Received message: Client 1 has left the chat at timestamp: 12
