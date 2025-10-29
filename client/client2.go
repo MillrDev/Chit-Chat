@@ -56,12 +56,12 @@ func main() {
 		timestamp++
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		textTimestamp := fmt.Sprintf("%s,%d", text, timestamp)
+		log.Printf("[Client][Publish] Published message: %s at timestamp: %d", strings.TrimSpace(text), timestamp)
 		_, err := client.Publish(ctx, &pb.MessageRequest{Text: textTimestamp})
 		cancel()
 		if err != nil {
 			log.Printf("[Client][Error]Error publishing message: %v\n", err)
 		}
-		log.Printf("[Client][Publish] Published message: %s at timestamp: %d", strings.TrimSpace(text), timestamp)
 	}
 }
 
