@@ -21,3 +21,4 @@
 2025/10/29 17:52:54 [Lamport=14][Server] | Event=Receive | Message="hey there"
 2025/10/29 17:52:54 [Lamport=15][Server] | Event=Broadcast | ReceivingClientID=2 | Message="hey there"
 2025/10/29 17:52:54 [Lamport=16][Client] | Event=Receive | Msg="hey there"
+2025/10/29 17:52:55 [Lamport=?][Server] | Event=Shutdown | Message=Server shutting down

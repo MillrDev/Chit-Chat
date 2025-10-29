@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
@@ -127,10 +128,17 @@ func main() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterChitChatServiceServer(grpcServer, newServer())
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		log.Printf("[Lamport=?][Server] | Event=Shutdown | Message=Server shutting down")
+		os.Exit(0)
+	}()
+
 	fmt.Println("ChitChat Server running on port 5060...")
 	log.Printf("[Lamport=1][Server] | Event=Listening | Message=Server listening at %v", lis.Addr())
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("[Lamport=1][Server] | Event=Error | Message= %v", err)
 	}
-	log.Printf("[Lamport=1][Server] | Event=Shutdown | Message=Server shutting down")
 }
