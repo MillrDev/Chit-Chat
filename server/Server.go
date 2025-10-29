@@ -112,7 +112,7 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 	if ch, ok := s.subscribers[id]; ok {
 		close(ch)
 		delete(s.subscribers, id)
-		log.Printf("[Server][Leave] Client id %d left the chat", id)
+		log.Printf("[Server][Leave] Client id %d left the chat | Lamport=%d", id, s.timestamp)
 	}
 }
 
