@@ -75,7 +75,7 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 	if len(parts) > 1 {
 		clientTime, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
 		s.timestamp = max(s.timestamp, clientTime) + 1 //increases timestamp for the receival of a message
-		log.Printf("[Server][Received] Event=Publish | from= A Client | Message=\"%s\" | Lamport=%d", text, s.timestamp)
+		log.Printf("[Server][Receive] Event=Publish | from= A Client | Message=\"%s\" | Lamport=%d", text, s.timestamp)
 	}
 
 	fmt.Printf("Broadcasting: %s\n", text)
