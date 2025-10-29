@@ -41,7 +41,7 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 	_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: text})
 
 	if err != nil {
-		log.Printf("[Server][Error]Error publishing client joined the chat: %v\n", err)
+		log.Printf("[Lamport=%d][Server] | Event=Error | Message=%v", s.timestamp, err)
 	}
 
 	go func() {
@@ -52,13 +52,13 @@ func (s *chitChatServer) Subscribe(_ *pb.Empty, stream pb.ChitChatService_Subscr
 		leaveMsg := fmt.Sprintf("Client %d has left the chat", id)
 		_, err := s.Publish(context.Background(), &pb.MessageRequest{Text: leaveMsg})
 		if err != nil {
-			log.Printf("[Server][Error] Error publishing leave message: %v\n", err)
+			log.Printf("[Lamport=%d][Server] | Event=Error | Message= %v", s.timestamp, err)
 		}
 	}()
 
 	for msg := range ch {
 		if err := stream.Send(msg); err != nil {
-			fmt.Printf("Error sending to client %d: %v\n", id, err)
+			log.Fatalf("[Lamport=%d][Server] | Event=Error | Message= %v", s.timestamp, err)
 			return nil
 		}
 	}
@@ -75,10 +75,8 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 	if len(parts) > 1 {
 		clientTime, _ = strconv.Atoi(strings.TrimSpace(parts[1]))
 		s.timestamp = max(s.timestamp, clientTime) + 1 //increases timestamp for the receival of a message
-		log.Printf("[Server][Receive] Event=Publish | from= A Client | Message=\"%s\" | Lamport=%d", text, s.timestamp)
+		log.Printf("[Lamport=%d][Server] | Event=Receive | Message=\"%s\"", s.timestamp, text)
 	}
-
-	fmt.Printf("Broadcasting: %s\n", text)
 
 	s.timestamp++ //increase timestamp for the sending of a message
 	for id, ch := range s.subscribers {
@@ -88,7 +86,7 @@ func (s *chitChatServer) Publish(ctx context.Context, msg *pb.MessageRequest) (*
 		case ch <- &m:
 		default:
 		}
-		log.Printf("[Server][Send] Event=Broadcast | To=ClientID=%d | Message=\"%s\" | Lamport=%d", id, text, s.timestamp)
+		log.Printf("[Lamport=%d][Server] | Event=Broadcast | ReceivingClientID=%d | Message=\"%s\"", s.timestamp, id, text)
 	}
 
 	return &pb.Empty{}, nil
@@ -102,7 +100,7 @@ func (s *chitChatServer) registerSubscriber() int {
 	s.nextID++
 	id := s.nextID
 	s.subscribers[id] = make(chan *pb.MessageRequest, 10)
-	log.Printf("[Server][Join] ClientID=%d | Event=ClientJoined | Message=\"Client %d joined the chat\" | Lamport=%d ", id, id, s.timestamp)
+	log.Printf("[Lamport=%d][Server] | Event=ClientJoin | ClientID=%d | Message=\"Client %d joined the chat\"", s.timestamp, id, id)
 	return id
 }
 
@@ -114,7 +112,7 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 	if ch, ok := s.subscribers[id]; ok {
 		close(ch)
 		delete(s.subscribers, id)
-		log.Printf("[Server][Leave] Client id %d left the chat | Lamport=%d", id, s.timestamp)
+		log.Printf("[Lamport=%d][Server] | Event=Leave | ClientID=%d", s.timestamp, id)
 	}
 }
 
@@ -122,7 +120,7 @@ func main() {
 	lis, err := net.Listen("tcp", ":5060")
 	file, err := os.OpenFile("logs.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("Failed to open log file: %v", err)
+		log.Fatalf("[Lamport=0][Server] | Event=Error | Message= %v", err)
 	}
 	log.SetOutput(file)
 
@@ -130,9 +128,9 @@ func main() {
 	pb.RegisterChitChatServiceServer(grpcServer, newServer())
 
 	fmt.Println("ChitChat Server running on port 5060...")
-	log.Printf("[Server][Listening] Server listening at %v", lis.Addr())
+	log.Printf("[Lamport=1][Server] | Event=Listening | Message=Server listening at %v", lis.Addr())
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("[Server][Fail]Failed to serve: %v", err)
+		log.Fatalf("[Lamport=1][Server] | Event=Error | Message= %v", err)
 	}
-	log.Printf("[Server][Shutdown] Server shutting down")
+	log.Printf("[Lamport=1][Server] | Event=Shutdown | Message=Server shutting down")
 }

@@ -20,29 +20,28 @@ import (
 )
 
 func main() {
+	timestamp := 0
 	file, err := os.OpenFile("logs.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("Failed to open log file: %v", err)
+		log.Fatalf("[Lamport=%d][Client] | Event=Error | Message= %v", timestamp, err)
 	}
 	log.SetOutput(file)
-
-	timestamp := 0
 
 	fmt.Println("Enter address you want to connect to: ")
 	var address string
 	fmt.Scanln(&address)
 
 	conn, err := grpc.Dial(address+":5060", grpc.WithInsecure())
-	log.Printf("[Client][Connect] Connected to server")
 	if err != nil {
-		log.Fatalf("[Client][Error] did not connect: %v", err)
+		timestamp++
+		log.Fatalf("[Lamport=%d][Client] | Event=Error | Message= %v", timestamp, err)
 	}
 	defer conn.Close()
 
 	client := pb.NewChitChatServiceClient(conn)
-
-	go subscribeForMessages(client, &timestamp)
 	timestamp++
+	log.Printf("[Lamport=%d][Client] | Event=Connect | Message=Connected to server", timestamp)
+	go subscribeForMessages(client, &timestamp)
 
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Connected to ChitChat — start typing messages!")
@@ -62,11 +61,11 @@ func main() {
 		timestamp++
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		textTimestamp := fmt.Sprintf("%s,%d", text, timestamp)
-		log.Printf("[Client][Publish] Published message: %s at timestamp: %d", strings.TrimSpace(text), timestamp)
+		log.Printf("[Lamport=%d][Client] | Event=Publish | Msg=\"%s\"", timestamp, strings.TrimSpace(text))
 		_, err := client.Publish(ctx, &pb.MessageRequest{Text: textTimestamp})
 		cancel()
 		if err != nil {
-			log.Printf("[Client][Error]Error publishing message: %v\n", err)
+			log.Printf("[Lamport=%d][Client] | Event=Error | Message=%v", timestamp, err)
 		}
 	}
 }
@@ -75,13 +74,13 @@ func main() {
 func subscribeForMessages(client pb.ChitChatServiceClient, timestamp *int) {
 	stream, err := client.Subscribe(context.Background(), &pb.Empty{})
 	if err != nil {
-		log.Fatalf("[Client][Fail] Failed to subscribe: %v", err)
+		log.Fatalf("[Lamport=%d][Client] | Event=Error | Message= %v", timestamp, err)
 	}
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			log.Printf("[Client][Close] Stream closed: %v", err)
+			log.Printf("[Lamport=%d][Client] | Event=StreamClosed | Message= %v", timestamp, err)
 			return
 		}
 		parts := strings.Split(msg.GetText(), ",")
@@ -92,6 +91,6 @@ func subscribeForMessages(client pb.ChitChatServiceClient, timestamp *int) {
 
 		fmt.Printf("\n [" + strconv.Itoa(*timestamp) + "] " + message + "\n")
 		fmt.Print("> ")
-		log.Println("[Client][Receive] Received message: " + message + " at timestamp: " + strconv.Itoa(*timestamp))
+		log.Printf("[Lamport=%d][Client] | Event=Receive | Msg=\"%s\"", *timestamp, message)
 	}
 }
