@@ -20,6 +20,12 @@ import (
 )
 
 func main() {
+	file, err := os.OpenFile("logs.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	log.SetOutput(file)
+
 	timestamp := 0
 
 	fmt.Println("Enter address you want to connect to: ")

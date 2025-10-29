@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -119,9 +120,11 @@ func (s *chitChatServer) unregisterSubscriber(id int) {
 
 func main() {
 	lis, err := net.Listen("tcp", ":5060")
+	file, err := os.OpenFile("logs.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("[Server][Fail] Failed to listen: %v", err)
+		log.Fatalf("Failed to open log file: %v", err)
 	}
+	log.SetOutput(file)
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterChitChatServiceServer(grpcServer, newServer())
